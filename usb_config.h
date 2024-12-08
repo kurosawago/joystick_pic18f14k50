@@ -162,10 +162,22 @@ please contact mla_licensing@microchip.com
 // HID
 #define HID_INTF_ID				0x00
 #define JOYSTICK_EP				1
-#define HID_INT_OUT_EP_SIZE		64
-#define HID_INT_IN_EP_SIZE		64
+#define HID_EP_SIZE				32
 #define HID_NUM_OF_DSC			1
+
+// #define RPT_TYPE				0
+#if RPT_TYPE == 1
+// Simple (12 Buttons)
+#define HID_RPT01_SIZE			44
+#elif RPT_TYPE == 2
+// Original (13 Buttons)
 #define HID_RPT01_SIZE			74
+#else
+// New (14 Buttons)
+#define HID_RPT01_SIZE			67
+#endif
+
+#define EMULATE_XY
 
 /** DEFINITIONS ****************************************************/
 

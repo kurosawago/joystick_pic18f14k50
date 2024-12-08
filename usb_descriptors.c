@@ -155,8 +155,8 @@ const USB_DEVICE_DESCRIPTOR device_dsc = {
 	0x00,					// Subclass code
 	0x00,					// Protocol code
 	USB_EP0_BUFF_SIZE,		// Max packet size for EP0, see usb_config.h
-	0x04D8,					// Vendor ID, see usb_config.h
-	0x005E,					// Product ID, see usb_config.h
+	0x16C0,					// Vendor ID, see usb_config.h
+	0x05DF,					// Product ID, see usb_config.h
 	0x0001,					// Device release number in BCD format
 	0x01,					// Manufacturer string index
 	0x02,					// Product string index
@@ -200,9 +200,9 @@ const uint8_t configDescriptor1[] = {
 	0x07,	// sizeof(USB_EP_DSC)		// Size of this descriptor in bytes
 	USB_DESCRIPTOR_ENDPOINT,			// Endpoint Descriptor
 	JOYSTICK_EP | _EP_IN,				// EndpointAddress
-	_INTERRUPT,				// Attributes
-	DESC_CONFIG_WORD(64),	// size
-	0x01,					// Interval
+	_INTERRUPT,							// Attributes
+	DESC_CONFIG_WORD(HID_EP_SIZE),		// Size
+	0x01,								// Interval
 };
 
 // Language code string descriptor
@@ -255,41 +255,118 @@ const struct{
 	uint8_t report[HID_RPT01_SIZE];
 } hid_rpt01= {
 	{
-		0x05, 0x01,			// USAGE_PAGE (Generic Desktop)
-		0x09, 0x05,			// USAGE (Game Pad)
-		0xA1, 0x01,			// COLLECTION (Application)
-		0x15, 0x00,			//  LOGICAL_MINIMUM(0)
-		0x25, 0x01,			//  LOGICAL_MAXIMUM(1)
-		0x35, 0x00,			//  PHYSICAL_MINIMUM(0)
-		0x45, 0x01,			//  PHYSICAL_MAXIMUM(1)
-		0x75, 0x01,			//  REPORT_SIZE(1)
-		0x95, 0x0D,			//  REPORT_COUNT(13)
-		0x05, 0x09,			//  USAGE_PAGE(Button)
-		0x19, 0x01,			//  USAGE_MINIMUM(Button 1)
-		0x29, 0x0D,			//  USAGE_MAXIMUM(Button 13)
-		0x81, 0x02,			//  INPUT(Data,Var,Abs)
-		0x95, 0x03,			//  REPORT_COUNT(3)
-		0x81, 0x01,			//  INPUT(Cnst,Ary,Abs)
-		0x05, 0x01,			//  USAGE_PAGE(Generic Desktop)
-		0x25, 0x07,			//  LOGICAL_MAXIMUM(7)
-		0x46, 0x3B, 0x01,	//  PHYSICAL_MAXIMUM(315)
-		0x75, 0x04,			//  REPORT_SIZE(4)
-		0x95, 0x01,			//  REPORT_COUNT(1)
-		0x65, 0x14,			//  UNIT(Eng Rot:Angular Pos)
-		0x09, 0x39,			//  USAGE(Hat Switch)
-		0x81, 0x42,			//  INPUT(Data,Var,Abs,Null)
-		0x65, 0x00,			//  UNIT(None)
-		0x95, 0x01,			//  REPORT_COUNT(1)
-		0x81, 0x01,			//  INPUT(Cnst,Ary,Abs)
-		0x26, 0xFF, 0x00,	//  LOGICAL_MAXIMUM(255)
-		0x46, 0xFF, 0x00,	//  PHYSICAL_MAXIMUM(255)
-		0x09, 0x30,			//  USAGE(X)
-		0x09, 0x31,			//  USAGE(Y)
-		0x09, 0x32,			//  USAGE(Z)
-		0x09, 0x35,			//  USAGE(Rz)
-		0x75, 0x08,			//  REPORT_SIZE(8)
-		0x95, 0x04,			//  REPORT_COUNT(4)
-		0x81, 0x02,			//  INPUT(Data,Var,Abs)
-		0xC0				// END_COLLECTION
+#if RPT_TYPE == 1
+		// Simple (44 Bytes)
+		0x05, 0x01,			// Usage Page (Generic Desktop Controls)
+		0x09, 0x05,			// Usage (Game Pad)
+		0xA1, 0x01,			// Collection (Application)
+
+		0x09, 0x39,			// Usage (Hat Switch)
+		0x15, 0x00,			// Logical Minimum (0)
+		0x25, 0x07,			// Logical Maximum (7)
+		0x35, 0x00,			// Physical Minimum (0)
+		0x46, 0x3B, 0x01,	// Physical Maximum (315)
+		0x65, 0x14,			// Unit (System: English Rotation, Angular Position)
+		0x75, 0x04,			// Report Size (4)
+		0x95, 0x01,			// Report Count (1)
+		0x81, 0x42,			// Input (Data, Var, Abs, Null): Send 4 bits
+		0x65, 0x00,			// Unit (None)
+
+		0x05, 0x09,			// Usage Page (Button)
+		0x19, 0x01,			// Usage Minimum (Button 1)
+		0x29, 0x0C,			// Usage Maximum (Button 12)
+		0x15, 0x00,			// Logical Minimum (0)
+		0x25, 0x01,			// Logical Maximum (1)
+		0x75, 0x01,			// Report Size (1)
+		0x95, 0x0C,			// Report Count (12)
+		0x81, 0x02,			// Input (Data, Var, Abs): Send 12 bits
+
+		0xC0				// End Collection
+#elif RPT_TYPE == 2
+		// Original (74 Bytes)
+		0x05, 0x01,			// Usage Page (Generic Desktop Controls)
+		0x09, 0x05,			// Usage (Game Pad)
+		0xA1, 0x01,			// Collection (Application)
+
+		0x15, 0x00,			// Logical Minimum (0)
+		0x25, 0x01,			// Logical Maximum (1)
+		0x35, 0x00,			// Physical Minimum (0)
+		0x45, 0x01,			// Physical Maximum (1)
+		0x75, 0x01,			// Report Size (1)
+		0x95, 0x0D,			// Report Count (13)
+		0x05, 0x09,			// Usage Page (Button)
+		0x19, 0x01,			// Usage Minimum (Button 1)
+		0x29, 0x0D,			// Usage Maximum (Button 13)
+		0x81, 0x02,			// Input (Data, Var, Abs): Send 13 bits
+
+		0x95, 0x03,			// Report Count (3)
+		0x81, 0x01,			// Input (Constant): Send 3 bits
+
+		0x05, 0x01,			// Usage Page (Generic Desktop Controls)
+		0x25, 0x07,			// Logical Maximum (7)
+		0x46, 0x3B, 0x01,	// Physical Maximum (315)
+		0x75, 0x04,			// Report Size (4)
+		0x95, 0x01,			// Report Count (1)
+		0x65, 0x14,			// Unit (System: English Rotation, Angular Position)
+		0x09, 0x39,			// Usage (Hat Switch)
+		0x81, 0x42,			// Input (Data, Var, Abs, Null): Send 4 bits
+
+		0x65, 0x00,			// UNIT(None)
+		0x95, 0x01,			// Report Count (1)
+		0x81, 0x01,			// Input (Constant): Send 4 bits
+
+		0x26, 0xFF, 0x00,	// Logical Maximum (255)
+		0x46, 0xFF, 0x00,	// Physical Maximum (255)
+		0x09, 0x30,			// Usage (X)
+		0x09, 0x31,			// Usage (Y)
+		0x09, 0x32,			// Usage (Z)
+		0x09, 0x35,			// Usage (Rz)
+		0x75, 0x08,			// Report Size (8)
+		0x95, 0x04,			// Report Count (4)
+		0x81, 0x02,			// Input (Data, Var, Abs): Send 32 bits
+
+		0xC0				// End Collection
+#else
+		// New (67 Bytes)
+		/// @note https://www.psdevwiki.com/ps4/DS4-USB
+		0x05, 0x01,			// Usage Page (Generic Desktop Controls)
+		0x09, 0x05,			// Usage (Game Pad)
+		0xA1, 0x01,			// Collection (Application)
+
+		0x09, 0x30,			// Usage (X)
+		0x09, 0x31,			// Usage (Y)
+		0x09, 0x32,			// Usage (Z)
+		0x09, 0x35,			// Usage (Rz)
+		0x15, 0x00,			// Logical Minimum (0)
+		0x26, 0xFF, 0x00,	// Logical Maximum (255)
+		0x75, 0x08,			// Report Size (8)
+		0x95, 0x04,			// Report Count (4)
+		0x81, 0x02,			// Input (Data, Var, Abs): Send 32 bits
+
+		0x09, 0x39,			// Usage (Hat Switch)
+		0x15, 0x00,			// Logical Minimum (0)
+		0x25, 0x07,			// Logical Maximum (7)
+		0x35, 0x00,			// Physical Minimum (0)
+		0x46, 0x3B, 0x01,	// Physical Maximum (315)
+		0x65, 0x14,			// Unit (System: English Rotation, Angular Position)
+		0x75, 0x04,			// Report Size (4)
+		0x95, 0x01,			// Report Count (1)
+		0x81, 0x42,			// Input (Data, Var, Abs, Null): Send 4 bits
+		0x65, 0x00,			// Unit (None)
+
+		0x05, 0x09,			// Usage Page (Button)
+		0x19, 0x01,			// Usage Minimum (Button 1)
+		0x29, 0x0E,			// Usage Maximum (Button 14)
+		0x15, 0x00,			// Logical Minimum (0)
+		0x25, 0x01,			// Logical Maximum (1)
+		0x75, 0x01,			// Report Size (1)
+		0x95, 0x0E,			// Report Count (14)
+		0x81, 0x02,			// Input (Data, Var, Abs): Send 14 bits
+
+		0x95, 0x06,			// Report Count (6)
+		0x81, 0x01,			// Input (Constant): Send 6 bits
+
+		0xC0				// End Collection
+#endif
 	}
 };

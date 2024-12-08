@@ -42,38 +42,87 @@ please contact mla_licensing@microchip.com
 
 /** TYPE DEFINITIONS ************************************************/
 typedef union _INTPUT_CONTROLS_TYPEDEF {
+#if RPT_TYPE == 1
+	// Simple (12 Buttons)
 	struct {
-		struct {
-			uint8_t square:1;
-			uint8_t x:1;
-			uint8_t o:1;
-			uint8_t triangle:1;
-			uint8_t L1:1;
-			uint8_t R1:1;
-			uint8_t L2:1;
-			uint8_t R2:1;
+		uint8_t dpad:4;
 
-			uint8_t select:1;
-			uint8_t start:1;
-			uint8_t L3:1;
-			uint8_t R3:1;
-			uint8_t home:1;
-			uint8_t :3;		// filler
-		} buttons;
+		uint8_t square:1;
+		uint8_t x:1;
+		uint8_t o:1;
+		uint8_t triangle:1;
 
-		struct {
-			uint8_t hat_switch:4;
-			uint8_t :4;		// filler
-		} hat_switch;
+		uint8_t L1:1;
+		uint8_t R1:1;
+		uint8_t L2:1;
+		uint8_t R2:1;
 
-		struct {
-			uint8_t X;
-			uint8_t Y;
-			uint8_t Z;
-			uint8_t Rz;
-		} analog_stick;
-	} members;
+		uint8_t select:1;
+		uint8_t start:1;
+		uint8_t L3:1;
+		uint8_t R3:1;
+	} m;
+	uint8_t val[2];
+#elif RPT_TYPE == 2
+	// Original (13 Buttons)
+	struct {
+		uint8_t square:1;
+		uint8_t x:1;
+		uint8_t o:1;
+		uint8_t triangle:1;
+
+		uint8_t L1:1;
+		uint8_t R1:1;
+		uint8_t L2:1;
+		uint8_t R2:1;
+
+		uint8_t select:1;
+		uint8_t start:1;
+		uint8_t L3:1;
+		uint8_t R3:1;
+
+		uint8_t home:1;
+		uint8_t :3;		// filler
+
+		uint8_t dpad;
+
+		uint8_t X;
+		uint8_t Y;
+		uint8_t Z;
+		uint8_t RZ;
+	} m;
 	uint8_t val[7];
+#else
+	// New (14 Buttons)
+	struct {
+		uint8_t X;
+		uint8_t Y;
+		uint8_t Z;
+		uint8_t RZ;
+
+		uint8_t dpad:4;
+
+		uint8_t square:1;
+		uint8_t x:1;
+		uint8_t o:1;
+		uint8_t triangle:1;
+
+		uint8_t L1:1;
+		uint8_t R1:1;
+		uint8_t L2:1;
+		uint8_t R2:1;
+
+		uint8_t select:1;
+		uint8_t start:1;
+		uint8_t L3:1;
+		uint8_t R3:1;
+
+		uint8_t home:1;
+		uint8_t tpad:1;
+		uint8_t :6;		// filler
+	} m;
+	uint8_t val[7];
+#endif
 } INPUT_CONTROLS;
 
 /** VARIABLES ******************************************************/
@@ -96,6 +145,11 @@ typedef union _INTPUT_CONTROLS_TYPEDEF {
 
 /// 最終データ
 uint8_t lastData;
+
+#if defined(EMULATE_XY)
+/// 動作モード
+uint8_t modeSwitch;
+#endif	// EMULATE_XY
 
 USB_VOLATILE USB_HANDLE lastTransmission;
 
@@ -122,6 +176,27 @@ static uint8_t hatTable[] = {
 	HAT_SWITCH_NULL,		// 1111
 };
 
+#ifdef EMULATE_XY
+/// XY方向テーブル
+static uint8_t xyTable[] = {
+	0x80,	// N
+	0xFF,	// NE
+	0xFF,	// E
+	0xFF,	// SE
+	0x80,	// S
+	0x00,	// SW
+	0x00,	// W  N
+	0x00,	// NW NE
+	0x80,	// X  E
+	0xFF,	//    SE
+	0xFF,	//    S
+	0xFF,	//    SW
+	0x80,	//    W
+	0x00,	//    NW
+	0x80	//    X
+};
+#endif	// EMULATE_XY
+
 /*********************************************************************
 * Function: void APP_DeviceJoystickInitialize(void);
 *
@@ -146,18 +221,32 @@ void APP_DeviceJoystickInitialize(void)
 	// lastData
 	lastData = 0;
 
-	// Buttons
+#ifdef EMULATE_XY
+	// START+SELECT同時押しで電源投入した場合に動作を変更する
+	modeSwitch = (PORTC & 15) == 0;
+#endif	// EMULATE_XY
+
+	// Initialize
+#if RPT_TYPE == 1
+	joystickInput.val[0] = HAT_SWITCH_NULL;
+	joystickInput.val[1] = 0;
+#elif RPT_TYPE == 2
 	joystickInput.val[0] = 0;
 	joystickInput.val[1] = 0;
-
-	// Hat switch
 	joystickInput.val[2] = HAT_SWITCH_NULL;
-
-	// Analog sticks
 	joystickInput.val[3] = 0x80;
 	joystickInput.val[4] = 0x80;
 	joystickInput.val[5] = 0x80;
 	joystickInput.val[6] = 0x80;
+#else
+	joystickInput.val[0] = 0x80;
+	joystickInput.val[1] = 0x80;
+	joystickInput.val[2] = 0x80;
+	joystickInput.val[3] = 0x80;
+	joystickInput.val[4] = HAT_SWITCH_NULL;
+	joystickInput.val[5] = 0;
+	joystickInput.val[6] = 0;
+#endif
 }
 
 /*********************************************************************
@@ -206,16 +295,43 @@ void APP_DeviceJoystickTasks(void)
 	lastData = data;
 
 	// 方向入力
-	joystickInput.val[2] = hatTable[data & 15];
+	uint8_t dir = hatTable[data & 15];
+	joystickInput.m.dpad = dir;
 
-	// 方向入力(特殊)
-	joystickInput.members.buttons.select = data & (data >> 1) & 1;
-	joystickInput.members.buttons.start = (data >> 2) & (data >> 3) & 1;
+#ifdef EMULATE_XY
+	if (modeSwitch == 0) {
+		// アナログ方向入力のエミュレーション
+		joystickInput.m.X = xyTable[dir];
+		joystickInput.m.Y = xyTable[dir + 6];
+	}
+#endif // EMULATE_XY
 
 	// ボタン入力
-	joystickInput.members.buttons.x = (data >> 4) & 1;
-	joystickInput.members.buttons.o = (data >> 5) & 1;
-	joystickInput.members.buttons.square = (data >> 6) & 1;
+	joystickInput.m.x = data >> 4;
+	joystickInput.m.o = data >> 5;
+	joystickInput.m.square = data >> 6;
+
+	// 方向入力(特殊)
+	data &= data >> 1;
+	joystickInput.m.select = data;
+	joystickInput.m.start = data >> 2;
+
+#if 0
+	uint8_t t = dir;
+
+	// ボタン入力
+	t |= (data << 1) & (1 << 5);	// bit 5: x
+	t |= (data << 1) & (1 << 6);	// bit 6: o
+	t |= (data >> 2) & (1 << 4);	// bit 4: square
+	joystickInput.val[0] = t;
+
+	// 方向入力(特殊)
+	data &= data >> 1;
+	t = 0;
+	t |= (data & 1) << 4;			// bit 4: select (SHARE)
+	t |= (data & 4) << 3;			// bit 5: start (OPTION)
+	joystickInput.val[1] = t;
+#endif
 
 	// Send the 8 byte packet over USB to the host.
 	/// @note データは7バイトなのに8バイトと書かれているのは何故？
